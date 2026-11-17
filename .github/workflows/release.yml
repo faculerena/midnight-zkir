@@ -111,7 +111,7 @@ jobs:
           set -euo pipefail
           nix build .#zkir-wasm
           mkdir -p release-artifacts
-          TGZ="result/lib/midnight-zkir-v3-${WASM_VERSION}.tgz"
+          TGZ="result/lib/midnight-zkir-v4-${WASM_VERSION}.tgz"
           [ -f "$TGZ" ] || { echo "::error::expected tarball not found: $TGZ"; ls -lah result/lib; exit 1; }
           cp "$TGZ" release-artifacts/
 
@@ -186,7 +186,7 @@ jobs:
           name: unit-test-results
           path: target/nextest/ci/test-results.xml
 
-  # Publishes @midnight-ntwrk/zkir-v3 (legacy scope) and @midnightntwrk/zkir-v3
+  # Publishes @midnight-ntwrk/zkir-v4 (legacy scope) and @midnightntwrk/zkir-v4
   # (migration target) to GitHub Packages and npmjs, mirroring
   # midnight-ledger's publish.yml. The built tarball's own scope is never
   # trusted: it is normalized to each target scope before publishing.
@@ -227,11 +227,11 @@ jobs:
         # setup on npmjs.com (plus an existing package).
         run: | # zizmor: ignore[use-trusted-publishing]
           set -euo pipefail
-          TGZ="npm-packages/midnight-zkir-v3-${WASM_VERSION}.tgz"
+          TGZ="npm-packages/midnight-zkir-v4-${WASM_VERSION}.tgz"
           [ -f "$TGZ" ] || { echo "::error::tarball not found: $TGZ"; exit 1; }
 
           # Normalize the tarball to a target scope: repack with package.json's
-          # `name` rewritten to <scope>/zkir-v3.
+          # `name` rewritten to <scope>/zkir-v4.
           rescope() { # rescope <scope> -> echoes rescoped tarball path
             local scope="$1" dir out
             dir=$(mktemp -d)
@@ -256,7 +256,7 @@ jobs:
           fi
 
           publish() { # publish <registry-url> <token> <scope>
-            local reg="$1" token="$2" scope="$3" pkg="${3}/zkir-v3" host npmrc rescoped
+            local reg="$1" token="$2" scope="$3" pkg="${3}/zkir-v4" host npmrc rescoped
             if [ -z "$token" ]; then
               echo "::error::no token configured for ${reg} - cannot publish ${pkg}@${WASM_VERSION}"
               exit 1

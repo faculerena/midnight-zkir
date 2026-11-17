@@ -81,7 +81,7 @@ fn pair(name: &str) -> Vec<String> {
 fn load(instructions: Vec<String>) -> IrSource {
     let ir_json = format!(
         r#"{{
-           "version": {{ "major": 3, "minor": 3 }},
+           "version": {{ "major": 4, "minor": 0 }},
            "inputs": [],
            "outputs": [],
            "do_communications_commitment": false,

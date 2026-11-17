@@ -189,7 +189,7 @@ pub async fn check(ser_preimage: Uint8Array, provider: JsValue) -> Result<Vec<Js
     };
 
     let ir = tagged_deserialize::<zkir::IrSource>(&data.ir_source[..])
-        .map_err(|e| JsError::new(&format!("Failed to deserialize ZKIR v3: {}", e)))?;
+        .map_err(|e| JsError::new(&format!("Failed to deserialize ZKIR v4: {}", e)))?;
     let res = preimage
         .check(&ir)
         .map_err(|e| JsError::new(&e.to_string()))?;

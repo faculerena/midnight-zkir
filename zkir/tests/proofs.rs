@@ -43,7 +43,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_extension_attack() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -84,7 +84,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_minimal_proof() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -142,7 +142,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_htc_proof() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" },
               { "name": "%v_1", "type": "Scalar<BLS12-381>" },
@@ -198,7 +198,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_hash_proof() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" },
               { "name": "%v_1", "type": "Scalar<BLS12-381>" },
@@ -252,7 +252,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_std_hashes_proof() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -303,7 +303,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_sha512_proof() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -353,7 +353,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_ec_proof() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Jubjub>" },
               { "name": "%s0", "type": "Scalar<BLS12-381>" },
@@ -429,7 +429,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_jubjub_scalar_arith_proof() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%a", "type": "Scalar<Jubjub>" },
               { "name": "%b", "type": "Scalar<Jubjub>" }
@@ -498,7 +498,7 @@ mod proof_tests {
         use midnight_zkir::ir_types::IrType;
 
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%s",   "type": "Scalar<Jubjub>" },
               { "name": "%raw", "type": "Bytes<32>"      }
@@ -585,7 +585,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_divmod_proof() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -645,7 +645,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_keygen_and_serialize_eq() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -674,7 +674,7 @@ mod proof_tests {
     async fn test_immediate_values() {
         // v_2 = v_0 + 5, constrain_eq(v_1, v_2)
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" },
               { "name": "%v_1", "type": "Scalar<BLS12-381>" }
@@ -721,7 +721,7 @@ mod proof_tests {
     async fn test_immediate_add_and_cond_select() {
         // v_2 = v_0 + 1, v_3 = test_eq(v_1, v_2), assert(v_3), v_4 = v_3 ? 2 : 3
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" },
               { "name": "%v_1", "type": "Scalar<BLS12-381>" }
@@ -770,7 +770,7 @@ mod proof_tests {
     async fn test_immediate_copy() {
         // v_1 = copy(0x42), constrain_eq(v_0, v_1)
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -817,7 +817,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_immediate_with_public_inputs() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" },
               { "name": "%v_1", "type": "Scalar<BLS12-381>" }
@@ -869,7 +869,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_impact_guarded_off_zeroes_public_input() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" },
               { "name": "%v_1", "type": "Scalar<BLS12-381>" }
@@ -920,7 +920,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_immediate_little_endian_encoding() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -962,7 +962,7 @@ mod proof_tests {
 
         // Test 0x0100 is interpreted as 1 (bytes [01, 00] = 1 + 256*0)
         let ir_raw2 = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -1007,7 +1007,7 @@ mod proof_tests {
         // Exercises test_eq (asserted), constrain_eq, cond_select, and neg on JubjubPoint
         // in a single circuit so every op is actively tested without dead values.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Jubjub>" },
               { "name": "%p1", "type": "Point<Jubjub>" },
@@ -1069,7 +1069,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_jubjub_point_test_eq_unequal() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Jubjub>" },
               { "name": "%p1", "type": "Point<Jubjub>" }
@@ -1123,7 +1123,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_jubjub_point_constrain_eq_fails_on_unequal() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Jubjub>" },
               { "name": "%p1", "type": "Point<Jubjub>" }
@@ -1177,7 +1177,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_jubjub_point_cond_select_fails_when_bit_zero() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Jubjub>" },
               { "name": "%p1", "type": "Point<Jubjub>" },
@@ -1236,7 +1236,7 @@ mod proof_tests {
     fn test_invalid_operand_no_percent_prefix() {
         // Variables without '%' prefix should fail to deserialize
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -1268,7 +1268,7 @@ mod proof_tests {
     fn test_invalid_operand_odd_length_hex() {
         // Hex immediates with odd length should fail to deserialize
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -1292,7 +1292,7 @@ mod proof_tests {
     fn test_invalid_operand_malformed_identifier() {
         // Random strings that don't follow conventions should be rejected
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "foo", "type": "Scalar<BLS12-381>" }
            ],
@@ -1318,7 +1318,7 @@ mod proof_tests {
         // Base, Scalar and Point values are typed inputs; arithmetic results
         // are checked via private inputs.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%id", "type": "Point<Secp256k1>"  },
               { "name": "%p0", "type": "Point<Secp256k1>"  },
@@ -1439,7 +1439,7 @@ mod proof_tests {
         use midnight_zkir::ir_instructions::into_coordinates::into_coordinates_offcircuit;
 
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%jp", "type": "Point<Jubjub>"    },
               { "name": "%sp", "type": "Point<Secp256k1>" }
@@ -1531,7 +1531,7 @@ mod proof_tests {
         use midnight_zkir::ir_types::IrType;
 
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%native",        "type": "Scalar<BLS12-381>"  },
               { "name": "%secp_base",     "type": "Base<Secp256k1>"    },
@@ -1685,7 +1685,7 @@ mod proof_tests {
 
             let ir_raw = format!(
                 r#"{{
-                   "version": {{ "major": 3, "minor": 0 }},
+                   "version": {{ "major": 4, "minor": 0 }},
                    "inputs": [
                       {{ "name": "%b", "type": "Bytes<{n}>" }}
                    ],
@@ -1758,7 +1758,7 @@ mod proof_tests {
         //   2. Reverses the reversed value again and checks it equals the
         //      original, exercising the involutive round-trip.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%b", "type": "Bytes<32>" }
            ],
@@ -1820,7 +1820,7 @@ mod proof_tests {
     async fn test_native_inv_proof() {
         // Verifies native field inversion: v0 * inv(v0) == 1.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v0", "type": "Scalar<BLS12-381>" }
            ],
@@ -1867,7 +1867,7 @@ mod proof_tests {
         // Base, Scalar and Point values are typed inputs; arithmetic results
         // are checked via private inputs.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%id", "type": "Point<Secp256r1>"  },
               { "name": "%p0", "type": "Point<Secp256r1>"  },
@@ -1984,7 +1984,7 @@ mod proof_tests {
         // via ec_mul_generator; the results are checked against private inputs
         // carrying the off-circuit products.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Secp256r1>"  },
               { "name": "%s0", "type": "Scalar<Secp256r1>" }
@@ -2061,7 +2061,7 @@ mod proof_tests {
         use midnight_zkir::ir_instructions::into_coordinates::into_coordinates_offcircuit;
 
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%pp", "type": "Point<Secp256r1>" }
            ],
@@ -2137,7 +2137,7 @@ mod proof_tests {
         use midnight_zkir::ir_types::IrType;
 
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%secp256r1_base",   "type": "Base<Secp256r1>"   },
               { "name": "%secp256r1_scalar", "type": "Scalar<Secp256r1>" },
@@ -2221,7 +2221,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_secp256r1_point_constrain_eq_fails_on_unequal() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Secp256r1>" },
               { "name": "%p1", "type": "Point<Secp256r1>" }
@@ -2286,7 +2286,7 @@ mod proof_tests {
         // Base, Scalar and Point values are typed inputs; arithmetic results
         // are checked via private inputs.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%id", "type": "Point<Curve25519>"  },
               { "name": "%p0", "type": "Point<Curve25519>"  },
@@ -2403,7 +2403,7 @@ mod proof_tests {
         // G * s0 via ec_mul_generator; the results are checked against
         // private inputs carrying the off-circuit products.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Curve25519>"  },
               { "name": "%s0", "type": "Scalar<Curve25519>" }
@@ -2482,7 +2482,7 @@ mod proof_tests {
         use midnight_zkir::ir_instructions::into_coordinates::into_coordinates_offcircuit;
 
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%pp", "type": "Point<Curve25519>" }
            ],
@@ -2562,7 +2562,7 @@ mod proof_tests {
 
         let ir_raw = format!(
             r#"{{
-           "version": {{ "major": 3, "minor": 0 }},
+           "version": {{ "major": 4, "minor": 0 }},
            "inputs": [
               {{ "name": "%s", "type": "Scalar<{curve}>" }}
            ],
@@ -2663,7 +2663,7 @@ mod proof_tests {
     async fn secp_zero_bytes_proof(curve: &str, p: IrValue) -> bool {
         let ir_raw = format!(
             r#"{{
-           "version": {{ "major": 3, "minor": 0 }},
+           "version": {{ "major": 4, "minor": 0 }},
            "inputs": [
               {{ "name": "%p", "type": "Point<{curve}>" }}
            ],
@@ -2751,7 +2751,7 @@ mod proof_tests {
         use midnight_zkir::ir_types::IrType;
 
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%c25519_base",   "type": "Base<Curve25519>"   },
               { "name": "%c25519_scalar", "type": "Scalar<Curve25519>" },
@@ -2839,7 +2839,7 @@ mod proof_tests {
     #[actix_rt::test]
     async fn test_curve25519_point_constrain_eq_fails_on_unequal() {
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%p0", "type": "Point<Curve25519>" },
               { "name": "%p1", "type": "Point<Curve25519>" }
@@ -2905,7 +2905,7 @@ mod proof_tests {
         // constrain_eq and test_eq on Bools. Expected results are checked
         // against Bool private inputs so every op is actively constrained.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%b0",  "type": "Bool" },
               { "name": "%b1",  "type": "Bool" },
@@ -2982,7 +2982,7 @@ mod proof_tests {
     async fn test_bool_constrain_eq_fails_on_unequal() {
         // constrain_eq on two different Bools must make proving fail.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%b0", "type": "Bool" },
               { "name": "%b1", "type": "Bool" }
@@ -3038,7 +3038,7 @@ mod proof_tests {
         // values (varying arity), checking each result against the constant
         // Bool inputs %t (true) and %f (false).
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%t", "type": "Bool" },
               { "name": "%f", "type": "Bool" }
@@ -3110,7 +3110,7 @@ mod proof_tests {
         // and(true, false) == false, so constraining it to equal true must
         // make proving fail.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%t", "type": "Bool" },
               { "name": "%f", "type": "Bool" }
@@ -3164,7 +3164,7 @@ mod proof_tests {
         // underlying gadget has no identity element wired up here). The
         // off-circuit preprocess pass (`check`) surfaces this as a clean error.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%t", "type": "Bool" }
            ],
@@ -3202,7 +3202,7 @@ mod proof_tests {
         // Bytes, and a Byte private input. `neg` is intentionally not supported
         // for Byte.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%a",   "type": "Byte" },
               { "name": "%b",   "type": "Byte" },
@@ -3270,7 +3270,7 @@ mod proof_tests {
     async fn test_byte_constrain_eq_fails_on_unequal() {
         // constrain_eq on two different Bytes must make proving fail.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%a", "type": "Byte" },
               { "name": "%b", "type": "Byte" }
@@ -3325,7 +3325,7 @@ mod proof_tests {
         // end-to-end: assign, test_eq (asserted), and constrain_eq against a
         // Bytes(48) private input.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%b", "type": "Bytes<48>" }
            ],
@@ -3380,7 +3380,7 @@ mod proof_tests {
         // `concat` builds a Bytes value from Byte and/or Bytes operands;
         // `nth` extracts the byte at a constant position.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%a", "type": "Byte" },
               { "name": "%b", "type": "Byte" },
@@ -3450,7 +3450,7 @@ mod proof_tests {
         // `nth` with index >= n must be rejected (surfaced cleanly by the
         // off-circuit preprocess pass).
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%s", "type": "Bytes<2>" }
            ],
@@ -3490,7 +3490,7 @@ mod proof_tests {
     async fn test_bytes_slice() {
         // `slice` extracts a contiguous sub-range; combined here with `reverse`.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%b", "type": "Bytes<6>" }
            ],
@@ -3557,7 +3557,7 @@ mod proof_tests {
     async fn test_slice_out_of_bounds_fails() {
         // start + len > n must be rejected (off-circuit preprocess).
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%b", "type": "Bytes<4>" }
            ],
@@ -3609,7 +3609,7 @@ mod proof_tests {
         use group::Group;
 
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [],
            "outputs": [],
            "do_communications_commitment": false,
@@ -3686,7 +3686,7 @@ mod proof_tests {
             .collect();
         let ir_raw = format!(
             r#"{{
-           "version": {{ "major": 3, "minor": 1 }},
+           "version": {{ "major": 4, "minor": 0 }},
            "inputs": [],
            "outputs": [],
            "do_communications_commitment": false,
@@ -3732,7 +3732,7 @@ mod proof_tests {
         // A Native constant needs exactly one field element; two is invalid and
         // must be rejected at IR preprocess.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [],
            "outputs": [],
            "do_communications_commitment": false,

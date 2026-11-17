@@ -2,13 +2,37 @@
 
 ## Unreleased
 
-- Add the `prepare_verification` and `inner_proof` instructions, with the circuit's
-  verifying keys carried in `IrSource::inner_vks`, which a binary
-  `IrSource` encodes from the new default `IrMinorVersion::V3` on.
-- Add the `Accumulator` type and the `accumulate` and
-  `verify_accumulator` instructions (ZKIR 4). `prepare_verification`  outputs an
-  accumulator, which must reach exactly one `verify_accumulator` (possibly
-  through `accumulate`).
+### ZKIR 4: a new major version
+
+This release was first planned as a ZKIR 3.x minor version (3.3), and is
+instead ZKIR 4. Its IR is not compatible with ZKIR 3, so this crate handles
+ZKIR 4 only; ZKIR 3 stays on the `zkir-v3` branch and the 3.x releases.
+
+- breaking: the JSON loader accepts only `{ "major": 4, "minor": 0 }`. The
+  minor version restarts at 0, and `IrMinorVersion` has the single variant
+  `V0`. Nothing is gated on the version.
+- breaking: the binary tags are bumped: `ir-source[v4-generic]`,
+  `ir-instruction[v4]`, `ir-type[v2]`, `zkir-typed-identifier[v2]` and
+  `ir-minor-version[v4]`, and so the prover key's is
+  `prover-key[v8](ir-source[v4-generic])`. ZKIR 3 files are refused by tag.
+- breaking: the crates are versioned 4.x, and the WASM bindings are published
+  to npm as `@midnightntwrk/zkir-v4` and `@midnight-ntwrk/zkir-v4`.
+- The `zkir-precompiles` test circuits and the `test-artifacts` flake output
+  are removed; they belong with their consumer, midnight-ledger.
+
+### IR language
+
+- Add the `prepare_verification` and `inner_proof` instructions, with the
+  circuit's verifying keys carried in `IrSource::inner_vks`.
+- Add the `Accumulator` type and the `accumulate` and `verify_accumulator`
+  instructions. `prepare_verification` outputs an accumulator, which must
+  reach exactly one `verify_accumulator` (possibly through `accumulate`).
+
+### Dependencies
+
+- Move to midnight-zk-stdlib 3.0.0-rc.1 and the matching transient-crypto.
+  Verifier keys now record how many accumulators their proofs carry, so keys
+  generated before this change are rejected.
 
 ## ZKIR 3.2.0
 

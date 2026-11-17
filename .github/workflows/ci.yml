@@ -152,9 +152,6 @@ jobs:
       - name: Build zkir
         run: nix build .#zkir
 
-      - name: Build test artifacts
-        run: nix build .#test-artifacts
-
   # Build once per OS, then run the tests across parallel shards; see
   # test.yml and .github/scripts/nextest-shard.sh.
   tests:

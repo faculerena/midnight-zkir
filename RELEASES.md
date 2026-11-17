@@ -82,7 +82,7 @@ job against the release PR branch:
    environment. When it is approved, it:
    - pushes the `zkir-<version>` tag on the head of `release/zkir-<version>`,
    - re-runs the unit tests,
-   - publishes `zkir-v3` to GitHub Packages and npmjs under both
+   - publishes `zkir-v4` to GitHub Packages and npmjs under both
      `@midnight-ntwrk` and `@midnightntwrk`,
    - publishes `midnight-zkir` to crates.io (final releases only),
    - creates the GitHub Release with the npm tarball, test results, and
