@@ -20,7 +20,6 @@
 mod verify_proof_common;
 
 use midnight_zkir::IrSource;
-use midnight_zkir::ir::IrMinorVersion;
 use midnight_zkir::ir_instructions::prepare_verification::prepare_verification_offcircuit;
 use serialize::{Deserializable, Serializable, tagged_deserialize, tagged_serialize};
 use sha2::Digest;
@@ -42,7 +41,7 @@ use crate::verify_proof_common::{
 /// The second `prepare_verification` shows the other shape of the same operator: a
 /// constant guard, always `0x01`, i.e. verify unconditionally.
 const VERIFY_PROOF_IR: &str = r#"{
-   "version": { "major": 3, "minor": 0 },
+   "version": { "major": 4, "minor": 0 },
    "inputs": [
       { "name": "%v_0", "type": "Scalar<BLS12-381>" },
       { "name": "%g", "type": "Scalar<BLS12-381>" }
@@ -195,41 +194,15 @@ fn duplicate_vk_in_side_table_is_rejected() {
     assert!(err.contains("duplicate verifying key"), "got: {err}");
 }
 
-/// Only a `V3` IR carries `inner_vks` in its binary form, and writing a
-/// `V0` that has one fails.
+/// The VK side-table survives a binary round-trip, and loads from inline JSON.
 #[test]
-fn ir_minor_version_gates_the_vk_side_table() {
-    let v0 = ir(BIND_ONE);
-    assert_eq!(v0.version, IrMinorVersion::V0, "text IR parses as V0");
-    assert!(v0.inner_vks.is_empty());
+fn the_vk_side_table_round_trips() {
+    let ir = ir_with_vks(BIND_ONE, vec![VK_BLOB_A.to_vec()]);
+    let back = read(&write(&ir).expect("an IR with a side-table must write"));
+    assert_eq!(back, ir, "the IR must round-trip");
 
-    let back = read(&write(&v0).expect("a V0 with no side-table must write"));
-    assert_eq!(back, v0, "a V0 must round-trip");
-    assert!(back.inner_vks.is_empty());
-
-    let v3 = ir_with_vks(BIND_ONE, vec![VK_BLOB_A.to_vec()]);
-    assert_eq!(v3.version, IrMinorVersion::V3);
-
-    let bytes = write(&v3).expect("a V3 with a side-table must write");
-    let back = read(&bytes);
-    assert_eq!(back, v3, "a V3 must round-trip");
-    assert_eq!(
-        back.inner_vks,
-        vec![VK_BLOB_A.to_vec()],
-        "the side-table must survive"
-    );
-
-    // A V0 with a side-table has no encoding.
-    let mut inconsistent = ir(BIND_ONE);
-    inconsistent.inner_vks = vec![VK_BLOB_A.to_vec()];
-    assert_eq!(inconsistent.version, IrMinorVersion::V0);
-
-    let err = write(&inconsistent)
-        .expect_err("a V0 carrying a side-table has no encoding and must not be written");
-    assert!(
-        format!("{err}").contains("V3"),
-        "the error should name the version required: {err}"
-    );
+    let inline = IrSource::load(ir_with_side_table().as_bytes()).expect("inline side-table");
+    assert_eq!(inline.inner_vks, vec![vec![0u8, 1, 2]]);
 }
 
 /// `vk_hash` and `inner_vks` survive JSON and binary round-trips, in
@@ -380,21 +353,6 @@ fn verify_proof_text_format_roundtrips() {
     );
 }
 
-/// A side-table exists only from `V3` on, so text carrying one must declare
-/// `minor: 3`. The inconsistent document is refused at load.
-#[test]
-fn side_table_requires_minor_3() {
-    let ir = IrSource::load(ir_with_side_table(3).as_bytes()).expect("`minor: 3` must load");
-    assert_eq!(ir.version, IrMinorVersion::V3);
-    assert_eq!(ir.inner_vks, vec![vec![0u8, 1, 2]]);
-    tagged_serialize(&ir, &mut Vec::new()).expect("a V3 carrying a side-table must serialize");
-
-    assert!(
-        IrSource::load(ir_with_side_table(2).as_bytes()).is_err(),
-        "`minor: 2` must not accept a side-table"
-    );
-}
-
 /// Every accumulator must reach exactly one `accumulate` or
 /// `verify_accumulator`: a dropped one is an unchecked proof.
 #[test]
@@ -534,16 +492,14 @@ fn instructions() -> String {
     bind_and_verify(&[vk_hash_hex(&VK_BLOB_A), vk_hash_hex(&VK_BLOB_B)])
 }
 
-/// The canonical IR with a side-table written inline, declaring `minor`.
-/// `Vec<Vec<u8>>` is an array of byte arrays in JSON. The blobs are arbitrary
-/// here: nothing about them is checked until the VM resolves them by hash.
-fn ir_with_side_table(minor: u8) -> String {
-    VERIFY_PROOF_IR
-        .replace("\"minor\": 0", &format!("\"minor\": {minor}"))
-        .replace(
-            "\"do_communications_commitment\": false,",
-            "\"do_communications_commitment\": false,\n   \"inner_vks\": [[0, 1, 2]],",
-        )
+/// The canonical IR with a side-table written inline. `Vec<Vec<u8>>` is an
+/// array of byte arrays in JSON. The blobs are arbitrary here: nothing about
+/// them is checked until the VM resolves them by hash.
+fn ir_with_side_table() -> String {
+    VERIFY_PROOF_IR.replace(
+        "\"do_communications_commitment\": false,",
+        "\"do_communications_commitment\": false,\n   \"inner_vks\": [[0, 1, 2]],",
+    )
 }
 
 /// Parses `instructions` as a circuit with no inputs.

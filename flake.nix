@@ -128,15 +128,15 @@
 
           packages.zkir = mkZkir { pname = "zkir"; crate = "midnight-zkir"; };
 
-          # The @midnightntwrk/zkir-v3 wasm bindings as an npm package;
+          # The @midnightntwrk/zkir-v4 wasm bindings as an npm package;
           # consumed downstream (e.g. compact's test-center) for local
-          # proving. The npm package keeps the -v3 suffix because consumers
-          # import v2 and v3 side by side; the crate itself is just "zkir"
-          # with the major version distinguishing v2 from v3.
+          # proving. The npm package keeps the major-version suffix because
+          # consumers import several majors side by side; the crate itself is
+          # just "zkir", with its version distinguishing the majors.
           packages.zkir-wasm = bagel-wasm {
             name = "zkir-wasm";
             crate-name = "midnight-zkir-wasm";
-            package-name = "zkir-v3";
+            package-name = "zkir-v4";
             dts = "zkir.d.ts";
             path = "zkir-wasm";
             src = rustWorkspaceSrc;
@@ -149,47 +149,6 @@
               MIDNIGHT_PP = "${packages.public-params}";
             };
             extraBuildInputs = [packages.public-params];
-          };
-
-          packages.test-artifacts = pkgs.stdenvNoCC.mkDerivation {
-            pname = "midnight-zkir-test-artifacts";
-            version = zkir-version;
-            src = inclusive.lib.inclusive ./zkir-precompiles [./zkir-precompiles];
-            MIDNIGHT_PP = "${packages.public-params}";
-            nativeBuildInputs = [
-              pkgs.jq
-              packages.public-params
-              packages.zkir
-            ];
-            buildPhase = ''
-              for contract in *; do
-                mv "$contract" "$contract-tmp"
-                mkdir -p "$contract/keys"
-                mv $contract-tmp "$contract/zkir"
-                VERSION=$(jq -s '.[0].version.major' $contract/zkir/*.zkir)
-                if [[ "$VERSION" == "3" ]]; then
-                  ${packages.zkir}/bin/zkir compile-many "$contract/zkir" "$contract/keys"
-                elif [[ "$VERSION" == "2" ]]; then
-                  # The v2 toolchain was removed in the crate consolidation, so
-                  # v2 fixtures ship with an empty keys/ directory; only their
-                  # zkir sources and precomputed hashes remain usable.
-                  :
-                else
-                  # Without this the loop would fall through, leaving an empty
-                  # keys/ directory and still exiting 0, so a contract whose
-                  # version no zkir here can compile would silently vanish from
-                  # MIDNIGHT_LEDGER_TEST_STATIC_DIR instead of failing the build.
-                  echo "error: contract '$contract' declares unsupported zkir major version '$VERSION'" >&2
-                  exit 1
-                fi
-              done
-            '';
-            installPhase = ''
-              mkdir $out
-              for contract in *; do
-                cp -a "$contract" "$out/$contract"
-              done
-            '';
           };
 
           packages.public-params = let
@@ -253,11 +212,6 @@
             hardeningDisable = ["zerocallusedregs" "stackprotector"];
 
             MIDNIGHT_PP = "${packages.public-params}";
-            # MIDNIGHT_LEDGER_TEST_STATIC_DIR is deliberately not set here:
-            # nothing in this workspace reads it, and referencing
-            # test-artifacts would make every `nix develop` (including each
-            # CI job) do a full nix build of zkir and compile every
-            # precompile's keys first. Use `nix build .#test-artifacts`.
           };
 
           # Runs tests from a `cargo nextest archive` built in the default

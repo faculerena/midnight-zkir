@@ -19,7 +19,7 @@ async fn output_arity_mismatch() {
     // Expect the error to mention "Output" and the two arities.
     assert_check_err_contains(
         r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -41,7 +41,7 @@ async fn output_operand_type_mismatch() {
     // names.
     assert_check_err_contains(
         r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],

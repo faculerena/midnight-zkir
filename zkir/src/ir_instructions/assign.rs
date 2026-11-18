@@ -12,6 +12,7 @@
 // limitations under the License.
 
 use midnight_circuits::instructions::AssignmentInstructions;
+use midnight_circuits::verifier::AssignedAccumulator;
 use midnight_curves::{Fr as JubjubFr, JubjubSubgroup, curve25519, k256, p256};
 use midnight_proofs::{
     circuit::{Layouter, Value},
@@ -22,7 +23,7 @@ use transient_crypto::curve::Fr;
 use transient_crypto::proofs::DeferredAccumulator;
 
 use crate::{
-    ir_instructions::F,
+    ir_instructions::{F, accumulate::to_accumulator},
     ir_types::{CircuitValue, IrType, IrValue},
 };
 
@@ -155,14 +156,15 @@ pub fn assign_incircuit(
         IrType::Accumulator => convert_values::<DeferredAccumulator>(values)?
             .into_iter()
             .map(|acc| {
-                std_lib
-                    .verifier()
-                    .assign_collapsed_accumulator(
-                        layouter,
-                        &[],
-                        acc.map(|acc| acc.to_accumulator()),
-                    )
-                    .map(CircuitValue::Accumulator)
+                let bls = std_lib.bls12_381();
+                AssignedAccumulator::assign_collapsed(
+                    layouter,
+                    bls,
+                    bls.scalar_field_chip(),
+                    &[],
+                    acc.map(to_accumulator),
+                )
+                .map(CircuitValue::Accumulator)
             })
             .collect(),
     }

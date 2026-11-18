@@ -39,7 +39,7 @@ async fn native_identity() {
     let input: Fr = 123.into();
     assert_typed_output_roundtrip(
         r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -62,7 +62,7 @@ async fn native_via_copy() {
     let input: Fr = 123.into();
     assert_typed_output_roundtrip(
         r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],
@@ -86,7 +86,7 @@ async fn bool_identity() {
     for b in [true, false] {
         assert_typed_output_roundtrip(
             r#"{
-               "version": { "major": 3, "minor": 0 },
+               "version": { "major": 4, "minor": 0 },
                "inputs": [
                   { "name": "%b", "type": "Bool" }
                ],
@@ -110,7 +110,7 @@ async fn bool_via_neg() {
     for b in [true, false] {
         assert_typed_output_roundtrip(
             r#"{
-               "version": { "major": 3, "minor": 0 },
+               "version": { "major": 4, "minor": 0 },
                "inputs": [
                   { "name": "%b", "type": "Bool" }
                ],
@@ -135,7 +135,7 @@ async fn byte_identity() {
     for b in [0u8, 1, 42, 255] {
         assert_typed_output_roundtrip(
             r#"{
-               "version": { "major": 3, "minor": 0 },
+               "version": { "major": 4, "minor": 0 },
                "inputs": [
                   { "name": "%b", "type": "Byte" }
                ],
@@ -167,7 +167,7 @@ async fn bytes_n_identity() {
         assert_typed_output_roundtrip(
             &format!(
                 r#"{{
-               "version": {{ "major": 3, "minor": 0 }},
+               "version": {{ "major": 4, "minor": 0 }},
                "inputs": [
                   {{ "name": "%b", "type": "Bytes<{n}>" }}
                ],
@@ -192,7 +192,7 @@ async fn multi_output_native_pair() {
     let input: Fr = 9.into();
     assert_typed_output_roundtrip(
         r#"{
-           "version": { "major": 3, "minor": 0 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [
               { "name": "%v_0", "type": "Scalar<BLS12-381>" }
            ],

@@ -14,6 +14,7 @@
 use anyhow::Result;
 use base_crypto::fab::Alignment;
 use midnight_proofs::dev::cost_model::CircuitModel;
+use midnight_zk_stdlib::{KZG, MidnightVK};
 #[cfg(feature = "proptest")]
 use proptest_derive::Arbitrary;
 use rand::{CryptoRng, Rng};
@@ -31,7 +32,9 @@ use transient_crypto::proofs::{
 use crate::ir_types::IrType;
 
 /// A low-level IR allowing the prover to populate circuit witnesses.
-#[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "proptest", derive(Arbitrary))]
+#[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize, Serializable)]
+#[tag = "ir-source[v4-generic]"]
 pub struct IrSource {
     /// The minor version of this IR.
     pub version: IrMinorVersion,
@@ -52,117 +55,6 @@ pub struct IrSource {
     pub inner_vks: Vec<Vec<u8>>,
 }
 
-/// Hand-written so `inner_vks` stays empty before `V3`, which is the
-/// invariant [`Serializable`] enforces.
-#[cfg(feature = "proptest")]
-impl proptest::arbitrary::Arbitrary for IrSource {
-    type Parameters = ();
-    type Strategy = proptest::strategy::BoxedStrategy<Self>;
-
-    fn arbitrary_with((): Self::Parameters) -> Self::Strategy {
-        use proptest::prelude::*;
-        (
-            any::<IrMinorVersion>(),
-            any::<Vec<TypedIdentifier>>(),
-            any::<Vec<IrType>>(),
-            any::<bool>(),
-            any::<Arc<Vec<Instruction>>>(),
-            any::<Vec<Vec<u8>>>(),
-        )
-            .prop_map(
-                |(version, inputs, outputs, do_communications_commitment, instructions, vks)| {
-                    let inner_vks = if version.has_inner_vks() {
-                        vks
-                    } else {
-                        Vec::new()
-                    };
-                    IrSource {
-                        version,
-                        inputs,
-                        outputs,
-                        do_communications_commitment,
-                        instructions,
-                        inner_vks,
-                    }
-                },
-            )
-            .boxed()
-    }
-}
-
-impl Tagged for IrSource {
-    fn tag() -> std::borrow::Cow<'static, str> {
-        std::borrow::Cow::Borrowed("ir-source[v3-generic]")
-    }
-    fn tag_unique_factor() -> String {
-        format!(
-            "(({},{},{},{},{},v3-only({})))",
-            <IrMinorVersion>::tag(),
-            <Vec<TypedIdentifier>>::tag(),
-            <Vec<IrType>>::tag(),
-            <bool>::tag(),
-            <Arc<Vec<Instruction>>>::tag(),
-            <Vec<Vec<u8>>>::tag(),
-        )
-    }
-}
-
-impl Serializable for IrSource {
-    fn serialize(&self, writer: &mut impl std::io::Write) -> Result<(), io::Error> {
-        if !self.version.has_inner_vks() && !self.inner_vks.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "`inner_vks` requires `IrMinorVersion::V3` or later",
-            ));
-        }
-        Serializable::serialize(&self.version, writer)?;
-        Serializable::serialize(&self.inputs, writer)?;
-        Serializable::serialize(&self.outputs, writer)?;
-        Serializable::serialize(&self.do_communications_commitment, writer)?;
-        Serializable::serialize(&self.instructions, writer)?;
-        if self.version.has_inner_vks() {
-            Serializable::serialize(&self.inner_vks, writer)?;
-        }
-        Ok(())
-    }
-
-    fn serialized_size(&self) -> usize {
-        let size = self.version.serialized_size()
-            + self.inputs.serialized_size()
-            + self.outputs.serialized_size()
-            + self.do_communications_commitment.serialized_size()
-            + self.instructions.serialized_size();
-        if self.version.has_inner_vks() {
-            size + self.inner_vks.serialized_size()
-        } else {
-            size
-        }
-    }
-}
-
-impl Deserializable for IrSource {
-    fn deserialize(reader: &mut impl Read, recursion_depth: u32) -> Result<Self, io::Error> {
-        let version: IrMinorVersion = Deserializable::deserialize(reader, recursion_depth)?;
-        let inputs = Deserializable::deserialize(reader, recursion_depth)?;
-        let outputs = Deserializable::deserialize(reader, recursion_depth)?;
-        let do_communications_commitment = Deserializable::deserialize(reader, recursion_depth)?;
-        let instructions = Deserializable::deserialize(reader, recursion_depth)?;
-        let inner_vks = if version.has_inner_vks() {
-            Deserializable::deserialize(reader, recursion_depth)?
-        } else {
-            Vec::new()
-        };
-        Ok(IrSource {
-            version,
-            inputs,
-            outputs,
-            do_communications_commitment,
-            instructions,
-            inner_vks,
-        })
-    }
-}
-
 tag_enforcement_test!(IrSource);
 tag_enforcement_test!(ProverKey<IrSource>);
 
@@ -176,26 +68,26 @@ tag_enforcement_test!(ProverKey<IrSource>);
     serde_repr::Deserialize_repr,
     Serializable,
 )]
-#[tag = "ir-minor-version[v3]"]
+#[tag = "ir-minor-version[v4]"]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum IrMinorVersion {
-    V0,
-    V1,
-    V2,
-    /// Adds [`IrSource::inner_vks`].
     #[default]
-    V3,
+    V0,
 }
 
-impl IrMinorVersion {
-    fn has_inner_vks(&self) -> bool {
-        !matches!(self, Self::V0 | Self::V1 | Self::V2)
+impl IrSource {
+    /// Wraps `vk`, binding the number of accumulators this circuit's proofs
+    /// carry.
+    fn verifier_key(&self, vk: MidnightVK<KZG>) -> transient_crypto::proofs::VerifierKey {
+        let accumulators = u32::try_from(self.accumulator_count())
+            .expect("a circuit has fewer than 2^32 instructions");
+        transient_crypto::proofs::VerifierKey::new(vk, accumulators)
     }
 }
 
 impl Zkir for IrSource {
-    type ProverKey = midnight_zk_stdlib::MidnightPK<IrSource>;
+    type ProverKey = midnight_zk_stdlib::MidnightPK<IrSource, KZG>;
 
     fn check(
         &self,
@@ -223,7 +115,8 @@ impl Zkir for IrSource {
             .init()
             .map_err(|_| anyhow::anyhow!("Could not init pk"))?;
 
-        let proof = prove::<_, TranscriptHash>(params_k.as_ref(), &pk, self, &pis, preproc, rng)?;
+        let proof =
+            prove::<_, TranscriptHash, KZG>(params_k.as_ref(), &pk, self, &pis, preproc, rng)?;
 
         // Split the produced PI vector at `N * accumulator_pi_len()`: the head is
         // the accumulator block (one entry per `verify_accumulator` instruction,
@@ -261,8 +154,8 @@ impl Zkir for IrSource {
         params: &impl ParamsProverProvider,
     ) -> Result<transient_crypto::proofs::VerifierKey, anyhow::Error> {
         use midnight_zk_stdlib::setup_vk;
-        let vk = setup_vk(params.get_params(self.k()).await?.as_ref(), self);
-        Ok(transient_crypto::proofs::VerifierKey::from(vk))
+        let vk = setup_vk::<_, KZG>(params.get_params(self.k()).await?.as_ref(), self);
+        Ok(self.verifier_key(vk))
     }
 
     async fn keygen(
@@ -270,12 +163,9 @@ impl Zkir for IrSource {
         params: &impl ParamsProverProvider,
     ) -> Result<(ProverKey<Self>, transient_crypto::proofs::VerifierKey), anyhow::Error> {
         use midnight_zk_stdlib::{setup_pk, setup_vk};
-        let vk = setup_vk(params.get_params(self.k()).await?.as_ref(), self);
+        let vk = setup_vk::<_, KZG>(params.get_params(self.k()).await?.as_ref(), self);
         let pk = setup_pk(self, &vk);
-        Ok((
-            ProverKey::from_raw(pk),
-            transient_crypto::proofs::VerifierKey::from(vk),
-        ))
+        Ok((ProverKey::from_raw(pk), self.verifier_key(vk)))
     }
 
     fn load_ir_from_tagged(reader: impl Read + std::io::Seek) -> std::io::Result<Self> {
@@ -289,7 +179,7 @@ impl Zkir for IrSource {
     }
 
     fn read_raw_pk(reader: impl Read) -> std::io::Result<Self::ProverKey> {
-        midnight_zk_stdlib::MidnightPK::<Self>::read(
+        midnight_zk_stdlib::MidnightPK::<Self, KZG>::read(
             &mut { reader },
             midnight_proofs::utils::SerdeFormat::RawBytesUnchecked,
         )
@@ -314,7 +204,7 @@ tag_enforcement_test!(Identifier);
 /// A typed identifier for a variable in the circuit memory
 #[cfg_attr(feature = "proptest", derive(Arbitrary))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Serializable)]
-#[tag = "zkir-typed-identifier[v1]"]
+#[tag = "zkir-typed-identifier[v2]"]
 pub struct TypedIdentifier {
     pub(crate) name: Identifier,
     #[serde(rename = "type")]
@@ -1523,7 +1413,7 @@ impl IrSource {
     /// Retrieves a model representation of this circuit.
     pub fn model(&self) -> Model {
         Model {
-            model: midnight_zk_stdlib::cost_model(self, None),
+            model: midnight_zk_stdlib::cost_model::<_, KZG>(self, None, false),
         }
     }
 
@@ -1540,22 +1430,12 @@ impl IrSource {
                         .clone(),
                 )?;
                 match ver {
-                    SerdeVersion {
-                        major: 3,
-                        minor: 0..=3,
-                    } => {
+                    SerdeVersion { major: 4, minor: 0 } => {
                         obj.insert(
                             "version".into(),
                             serde_json::Value::Number(ver.minor.into()),
                         );
-                        let ir: Self = serde_json::from_value(serde_json::Value::Object(obj))?;
-                        if !ir.version.has_inner_vks() && !ir.inner_vks.is_empty() {
-                            return Err(io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                "`inner_vks` requires `minor: 3` or later",
-                            ));
-                        }
-                        Ok(ir)
+                        Ok(serde_json::from_value(serde_json::Value::Object(obj))?)
                     }
                     SerdeVersion { major, minor } => Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -1588,7 +1468,8 @@ impl IrSource {
             .init()
             .map_err(|_| anyhow::anyhow!("Could not init pk"))?;
 
-        let proof = prove::<_, TranscriptHash>(params_k.as_ref(), &pk, self, &pis, preproc, rng)?;
+        let proof =
+            prove::<_, TranscriptHash, KZG>(params_k.as_ref(), &pk, self, &pis, preproc, rng)?;
 
         use transient_crypto::proofs::{DeferredAccumulator, accumulator_pi_len};
         let acc_len = accumulator_pi_len();

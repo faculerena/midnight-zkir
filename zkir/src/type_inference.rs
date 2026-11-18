@@ -212,7 +212,7 @@ mod tests {
         // The curve types below only arise from instructions other than circuit
         // inputs, public/private inputs and from_bytes.
         let ir_raw = r#"{
-           "version": { "major": 3, "minor": 2 },
+           "version": { "major": 4, "minor": 0 },
            "inputs": [ { "name": "%x", "type": "Scalar<BLS12-381>" } ],
            "outputs": [],
            "do_communications_commitment": false,

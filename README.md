@@ -8,7 +8,6 @@ ZKIR is the circuit format that the [Compact](https://docs.midnight.network/deve
 
 - `zkir/` — the `midnight-zkir` crate: the IR types, instruction set, and VM, plus the `zkir` CLI binary (behind the `binary` feature) with `compile`, `compile-many`, `mock-compile`, and `mock-compile-many` subcommands for turning `.zkir` files into prover/verifier keys.
 - `zkir-wasm/` — WASM bindings (`midnight-zkir-wasm`) exposing the checker and prover to JavaScript via `wasm-bindgen`.
-- `zkir-precompiles/` — precompiled example circuits (zswap, dust, token-vault, micro-dao, and others) used as test artifacts.
 
 ## Building
 
@@ -17,7 +16,6 @@ With [Nix](https://nixos.org/) (recommended — provides the pinned Rust toolcha
 ```sh
 nix develop        # enter a dev shell
 nix build          # build the zkir CLI
-nix build .#test-artifacts
 ```
 
 With plain Cargo:
