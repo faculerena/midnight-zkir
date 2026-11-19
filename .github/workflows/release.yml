@@ -8,9 +8,9 @@ name: Publish ZKIR Release
 #      crate version; the published npm package uses the `zkir-wasm` version,
 #      matching the ledger convention).
 #   2. `unit-tests` re-runs the full suite at the released commit.
-#   3. `publish-npm` publishes the tarball to GitHub Packages and npmjs under
-#      both scopes (@midnight-ntwrk legacy, @midnightntwrk migration target).
-#      Fails if a registry token is missing or any publish fails.
+#   3. `publish-npm` publishes the tarball to GitHub Packages under both
+#      scopes, and to npmjs under @midnightntwrk only, via npm Trusted
+#      Publishing. Fails if a publish fails.
 #   4. `crates-io` publishes the `midnight-zkir` crate to crates.io (final
 #      releases only; pre-releases skip it). Dry runs rehearse with
 #      `--dry-run`. Runs independently of the GitHub Release, as in
@@ -186,17 +186,12 @@ jobs:
           name: unit-test-results
           path: target/nextest/ci/test-results.xml
 
-  # Publishes @midnight-ntwrk/zkir-v3 (legacy scope) and @midnightntwrk/zkir-v3
-  # (migration target) to GitHub Packages and npmjs, mirroring
-  # midnight-ledger's publish.yml. The built tarball's own scope is never
-  # trusted: it is normalized to each target scope before publishing.
-  # Idempotent: already-published versions are skipped unless `force`.
-  #
-  # Requires secrets (repo- or `release` environment-scoped):
-  #   MIDNIGHTCI_PACKAGES_WRITE - GH Packages write token
-  #   MIDNIGHTCI_NPMJS_TOKEN    - npmjs publish token
-  # A missing token or a failed publish fails the job, which blocks the
-  # GitHub Release.
+  # Publishes zkir-v3 to GitHub Packages under both scopes and to npmjs under
+  # @midnightntwrk only, mirroring midnight-ledger's publish.yml. The tarball is
+  # normalized to each target scope. Already-published versions are skipped
+  # unless `force`. npmjs auth is Trusted Publishing: this file (release.yml)
+  # with environment `release` is the trusted publisher for @midnightntwrk/zkir-v3.
+  # A failed publish fails the job, which blocks the GitHub Release.
   publish-npm:
     needs: [ build, unit-tests ]
     if: ${{ github.event.inputs.dry_run != 'true' }}
@@ -204,11 +199,13 @@ jobs:
     # Runs under the protected `release` environment (as midnight-ledger's
     # publish.yml does) so environment-scoped publish secrets are available.
     environment: release
+    permissions:
+      contents: read
+      id-token: write # npm Trusted Publishing (OIDC) + provenance
     env:
       WASM_VERSION: ${{ needs.build.outputs.wasm_version }}
       FORCE: ${{ github.event.inputs.force }}
       GH_PACKAGES_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-      NPMJS_TOKEN: ${{ secrets.MIDNIGHTCI_NPMJS_TOKEN }}
     steps:
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -222,9 +219,8 @@ jobs:
           path: npm-packages
 
       - name: Publish to registries
-        # Token auth is deliberate: GH Packages doesn't support npm trusted
-        # publishing, and npmjs OIDC needs per-package trusted-publisher
-        # setup on npmjs.com (plus an existing package).
+        # GH Packages has no Trusted Publishing, so it keeps a token; npmjs uses
+        # OIDC, which npm >= 11.5.1 performs when no token is configured.
         run: | # zizmor: ignore[use-trusted-publishing]
           set -euo pipefail
           TGZ="npm-packages/midnight-zkir-v3-${WASM_VERSION}.tgz"
@@ -255,17 +251,26 @@ jobs:
             DIST_TAG="${BASH_REMATCH[1]}"
           fi
 
-          publish() { # publish <registry-url> <token> <scope>
+          NPM_VER=$(npm --version)
+          if [ "$(printf '%s\n' 11.5.1 "$NPM_VER" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm ${NPM_VER} < 11.5.1 - OIDC trusted publishing unsupported"; exit 1
+          fi
+
+          publish() { # publish <registry-url> <token|oidc> <scope>
             local reg="$1" token="$2" scope="$3" pkg="${3}/zkir-v3" host npmrc rescoped
             if [ -z "$token" ]; then
               echo "::error::no token configured for ${reg} - cannot publish ${pkg}@${WASM_VERSION}"
               exit 1
             fi
             # Scoped packages resolve their registry via .npmrc, not --registry,
-            # so write a throwaway userconfig with the scope mapping + auth.
+            # so write a throwaway userconfig with the scope mapping (+ auth when
+            # not OIDC).
             host="${reg#https://}"; host="${host%/}"
             npmrc=$(mktemp)
-            printf '%s:registry=%s\n//%s/:_authToken=%s\n' "$scope" "$reg" "$host" "$token" > "$npmrc"
+            printf '%s:registry=%s\n' "$scope" "$reg" > "$npmrc"
+            if [ "$token" != "oidc" ]; then
+              printf '//%s/:_authToken=%s\n' "$host" "$token" >> "$npmrc"
+            fi
             if [ "${FORCE:-false}" != "true" ] \
                && NPM_CONFIG_USERCONFIG="$npmrc" npm view "${pkg}@${WASM_VERSION}" version >/dev/null 2>&1; then
               echo "${pkg}@${WASM_VERSION} already on ${reg} - skipping."
@@ -284,8 +289,9 @@ jobs:
 
           for SCOPE in @midnight-ntwrk @midnightntwrk; do
             publish "https://npm.pkg.github.com" "$GH_PACKAGES_TOKEN" "$SCOPE"
-            publish "https://registry.npmjs.org" "$NPMJS_TOKEN"       "$SCOPE"
           done
+          # npmjs gets the canonical @midnightntwrk scope only.
+          publish "https://registry.npmjs.org" oidc @midnightntwrk
 
   # Publishes the workspace crates (midnight-zkir; zkir-wasm is
   # `publish = false`) to crates.io, mirroring midnight-ledger's `crates-io`
