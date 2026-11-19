@@ -190,15 +190,16 @@ jobs:
   # @midnightntwrk only, mirroring midnight-ledger's publish.yml. The tarball is
   # normalized to each target scope. Already-published versions are skipped
   # unless `force`. npmjs auth is Trusted Publishing: this file (release.yml)
-  # with environment `release` is the trusted publisher for @midnightntwrk/zkir-v3.
+  # with environment `npm-publish-stable` is the trusted publisher for
+  # @midnightntwrk/zkir-v3.
   # A failed publish fails the job, which blocks the GitHub Release.
   publish-npm:
     needs: [ build, unit-tests ]
     if: ${{ github.event.inputs.dry_run != 'true' }}
     runs-on: ubuntu-latest
-    # Runs under the protected `release` environment (as midnight-ledger's
-    # publish.yml does) so environment-scoped publish secrets are available.
-    environment: release
+    # The org-wide npm Trusted Publishing environment; its required reviewers
+    # gate the OIDC exchange.
+    environment: npm-publish-stable
     permissions:
       contents: read
       id-token: write # npm Trusted Publishing (OIDC) + provenance
