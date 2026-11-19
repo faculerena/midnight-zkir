@@ -2020,6 +2020,7 @@ dependencies = [
  "console 0.16.6",
  "const-hex",
  "env_logger",
+ "flate2",
  "futures-executor",
  "group 0.13.0",
  "hex",

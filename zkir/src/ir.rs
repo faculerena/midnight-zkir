@@ -31,6 +31,8 @@ use transient_crypto::proofs::{
 
 use crate::ir_types::IrType;
 
+const PK_COMPRESSION_LEVEL: u32 = 6;
+
 /// A low-level IR allowing the prover to populate circuit witnesses.
 #[cfg_attr(feature = "proptest", derive(Arbitrary))]
 #[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize, Serializable)]
@@ -179,17 +181,22 @@ impl Zkir for IrSource {
     }
 
     fn read_raw_pk(reader: impl Read) -> std::io::Result<Self::ProverKey> {
+        let mut reader = flate2::read::GzDecoder::new(reader);
         midnight_zk_stdlib::MidnightPK::<Self, KZG>::read(
-            &mut { reader },
+            &mut reader,
             midnight_proofs::utils::SerdeFormat::RawBytesUnchecked,
         )
     }
 
     fn write_raw_pk(writer: impl std::io::Write, pk: &Self::ProverKey) -> std::io::Result<()> {
+        let mut writer =
+            flate2::write::GzEncoder::new(writer, flate2::Compression::new(PK_COMPRESSION_LEVEL));
         pk.write(
-            &mut { writer },
+            &mut writer,
             midnight_proofs::utils::SerdeFormat::RawBytesUnchecked,
-        )
+        )?;
+        writer.finish()?;
+        Ok(())
     }
 }
 
