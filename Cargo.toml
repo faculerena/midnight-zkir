@@ -24,3 +24,12 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 panic = "abort"
+
+# Fast key generation: midnight-proofs 0.8.2, midnight-circuits 7.3.0 and
+# midnight-zk-stdlib 2.4.0 with the changes for compactf (write-only keygen
+# from one synthesis, sparse permutation commitments, cached Lagrange MSM
+# bases, a leaner cost model). Branch compactf of faculerena/midnight-zk.
+[patch.crates-io]
+midnight-proofs = { git = "https://github.com/faculerena/midnight-zk", rev = "cea047d2055e02300aa96996f782d7a6214f51d8" }
+midnight-zk-stdlib = { git = "https://github.com/faculerena/midnight-zk", rev = "cea047d2055e02300aa96996f782d7a6214f51d8" }
+midnight-circuits = { git = "https://github.com/faculerena/midnight-zk", rev = "cea047d2055e02300aa96996f782d7a6214f51d8" }

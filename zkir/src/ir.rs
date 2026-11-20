@@ -1294,12 +1294,197 @@ impl Model {
     }
 }
 
+/// The candidate values of `k` that the search for the optimal `k` covers:
+/// those of `midnight_zk_stdlib::optimal_k`.
+const K_SEARCH_MIN: u32 = 9;
+const K_SEARCH_MAX: u32 = 25;
+
+/// How many candidate values of `k` [`IrSource::k_and_model`] tries at once
+/// to begin with, when nothing is known about the circuit yet.
+const K_SEARCH_FIRST_BATCH: u32 = 4;
+
+/// The most candidate values of `k` that [`IrSource::k_and_model`] tries at
+/// once. It bounds the memory of the search: one cost-model synthesis of the
+/// circuit per candidate in flight, each a small fraction of what generating
+/// the keys of the same circuit takes.
+const K_SEARCH_MAX_BATCH: u32 = 8;
+
+/// The candidates that [`IrSource::k_and_model`] tries next, at once: a
+/// non-empty run of consecutive candidates that begins at `start`, where
+/// `start` is in `K_SEARCH_MIN..=K_SEARCH_MAX`.
+///
+/// `last_rows` is the row count of the model of the candidate before `start`,
+/// if there is one. The row count changes little from one candidate to the
+/// next, so the search most likely ends at the first candidate k with
+/// `last_rows < 2^k`: the run goes up to that one, so that the search neither
+/// waits for a further round nor computes models it will discard. This only
+/// decides which models are computed together, never the result of the
+/// search, and it is a function of the circuit alone.
+fn k_search_batch(start: u32, last_rows: Option<usize>) -> std::ops::RangeInclusive<u32> {
+    let width = match last_rows {
+        None => K_SEARCH_FIRST_BATCH,
+        Some(rows) => {
+            let expected_end = (start..=K_SEARCH_MAX)
+                .find(|k| rows < (1usize << k))
+                .unwrap_or(K_SEARCH_MAX);
+            expected_end - start + 1
+        }
+    };
+    let width = width.clamp(1, K_SEARCH_MAX_BATCH);
+    start..=start.saturating_add(width - 1).min(K_SEARCH_MAX)
+}
+
+/// A prover key that can be serialised, and that is all it can do: what
+/// [`IrSource::keygen_for_write_with_k`] gives. It serialises, tag included,
+/// to the same bytes as the [`ProverKey`] of [`Zkir::keygen`], so what is
+/// written deserialises as a `ProverKey<IrSource>` that can prove.
+#[derive(Debug)]
+pub struct WriteOnlyProverKey(midnight_zk_stdlib::MidnightWriteOnlyPK<IrSource>);
+
+impl WriteOnlyProverKey {
+    fn write_raw<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
+        // As `Zkir::write_raw_pk` for `IrSource`.
+        self.0
+            .write(writer, midnight_proofs::utils::SerdeFormat::RawBytesUnchecked)
+    }
+
+    fn raw_size(&self) -> usize {
+        struct Count(usize);
+        impl io::Write for Count {
+            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                self.0 += buf.len();
+                Ok(buf.len())
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut count = Count(0);
+        self.write_raw(&mut count)
+            .expect("counting bytes cannot fail");
+        count.0
+    }
+}
+
+impl Tagged for WriteOnlyProverKey {
+    fn tag() -> std::borrow::Cow<'static, str> {
+        ProverKey::<IrSource>::tag()
+    }
+    fn tag_unique_factor() -> String {
+        ProverKey::<IrSource>::tag_unique_factor()
+    }
+}
+
+// The framing of `ProverKey`'s serialisation: the length of the raw key as a
+// `u64`, then the raw key.
+impl Serializable for WriteOnlyProverKey {
+    fn serialize(&self, writer: &mut impl io::Write) -> io::Result<()> {
+        Serializable::serialize(&(self.raw_size() as u64), writer)?;
+        self.write_raw(writer)
+    }
+
+    fn serialized_size(&self) -> usize {
+        let size = self.raw_size();
+        (size as u64).serialized_size() + size
+    }
+}
+
 impl IrSource {
     /// Retrieves a model representation of this circuit.
     pub fn model(&self) -> Model {
         Model {
             model: midnight_zk_stdlib::cost_model(self, None),
         }
+    }
+
+    /// Finds the optimal `k` for this circuit and the model for it: the same
+    /// `k` as [`Zkir::k`] and the same model as `cost_model(self, Some(k))`.
+    ///
+    /// `midnight_zk_stdlib::optimal_k` tries k = 9, 10, ... 25 in turn, keeps
+    /// the smallest `model.k` it has seen, and stops after the first k whose
+    /// model has fewer than 2^k rows. This does the same over the same
+    /// candidates in the same order with the same stopping rule; the only
+    /// difference is that the models of a few consecutive candidates (see
+    /// [`k_search_batch`]) are computed at once, on a thread each. A model is
+    /// a pure function of the circuit and the candidate k, so computing it
+    /// early changes nothing, and the models of candidates past the stopping
+    /// point are discarded unread. How the candidates are batched depends on
+    /// the circuit only, not on the machine or the environment.
+    pub fn k_and_model(&self) -> (u8, Model) {
+        use midnight_proofs::utils::tmark;
+        let mut best_k = u32::MAX;
+        let mut seen = Vec::new();
+        let mut last_rows = None;
+        let mut start = K_SEARCH_MIN;
+        'search: while start <= K_SEARCH_MAX {
+            // Whatever `k_search_batch` says, the batch begins at `start`
+            // and is not empty, and the next one begins past its end: every
+            // candidate is tried in turn and the search always ends.
+            let end = (*k_search_batch(start, last_rows).end()).clamp(start, K_SEARCH_MAX);
+            let batch = start..=end;
+            start = end.saturating_add(1);
+            let models: Vec<_> = std::thread::scope(|scope| {
+                let handles: Vec<_> = batch
+                    .clone()
+                    .map(|k| {
+                        scope.spawn(move || {
+                            let t = std::time::Instant::now();
+                            let m = midnight_zk_stdlib::cost_model(self, Some(k));
+                            (m, t.elapsed())
+                        })
+                    })
+                    .collect();
+                handles
+                    .into_iter()
+                    .map(|h| h.join().expect("cost model thread should not panic"))
+                    .collect()
+            });
+            for (k, (model, dt)) in batch.zip(models) {
+                tmark(&format!(
+                    "k search: trial k={k} -> model.k={} rows={} ({:.3}s in its thread)",
+                    model.k,
+                    model.rows,
+                    dt.as_secs_f64()
+                ));
+                let done = model.rows < (1 << k);
+                if model.k < best_k {
+                    best_k = model.k;
+                }
+                last_rows = Some(model.rows);
+                seen.push((k, model));
+                if done {
+                    break 'search;
+                }
+            }
+        }
+        let model = match seen.into_iter().find(|(k, _)| *k == best_k) {
+            Some((_, model)) => model,
+            None => midnight_zk_stdlib::cost_model(self, Some(best_k)),
+        };
+        (best_k as u8, Model { model })
+    }
+
+    /// Generates the keys of this circuit for writing them out, for the `k`
+    /// that [`IrSource::k_and_model`] (or [`Zkir::k`]) found: the verifier
+    /// key that [`Zkir::keygen`] gives, and a [`WriteOnlyProverKey`] that
+    /// serialises to the same bytes as the prover key of [`Zkir::keygen`].
+    ///
+    /// This is much cheaper than `keygen`: one synthesis instead of two, and
+    /// none of the prover's derived data, which the serialised key does not
+    /// hold. To prove, use `keygen`, or read the written key back.
+    pub async fn keygen_for_write_with_k(
+        &self,
+        params: &impl ParamsProverProvider,
+        k: u8,
+    ) -> Result<(WriteOnlyProverKey, transient_crypto::proofs::VerifierKey), anyhow::Error> {
+        let params = params.get_params(k).await?;
+        midnight_proofs::utils::tmark("params loaded");
+        let (vk, pk) = midnight_zk_stdlib::setup_keys_for_write(params.as_ref(), self)
+            .map_err(|e| anyhow::anyhow!("key generation failed for k={k}: {e}"))?;
+        Ok((
+            WriteOnlyProverKey(pk),
+            transient_crypto::proofs::VerifierKey::from(vk),
+        ))
     }
 
     /// Attempts to parse an arbitrary input as IR.

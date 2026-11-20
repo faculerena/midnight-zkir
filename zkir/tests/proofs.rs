@@ -3648,4 +3648,79 @@ mod proof_tests {
             "a Native constant with 2 field elements should be rejected"
         );
     }
+
+    /// The fast path that the `compile` and `compile-many` commands take
+    /// (`k_and_model`, then `keygen_for_write_with_k`) finds the `k` of
+    /// `Zkir::k` and writes the bytes that the keys of `Zkir::keygen` write.
+    #[actix_rt::test]
+    async fn test_write_only_keys_match_keygen() {
+        use serialize::tagged_serialize;
+        use transient_crypto::proofs::Zkir as _;
+
+        let irs = [
+            r#"{
+               "version": { "major": 3, "minor": 0 },
+               "inputs": [
+                  { "name": "%v_0", "type": "Scalar<BLS12-381>" }
+               ],
+               "outputs": [],
+               "do_communications_commitment": false,
+               "instructions": [
+                   { "op": "assert", "cond": "%v_0" }
+               ]
+            }"#,
+            r#"{
+               "version": { "major": 3, "minor": 0 },
+               "inputs": [
+                  { "name": "%v_0", "type": "Scalar<BLS12-381>" },
+                  { "name": "%v_1", "type": "Scalar<BLS12-381>" },
+                  { "name": "%v_2", "type": "Scalar<BLS12-381>" }
+               ],
+               "outputs": [],
+               "do_communications_commitment": false,
+               "instructions": [
+                   { "op": "hash_to_curve", "inputs": ["%v_0", "%v_1", "%v_2"], "output": "%p_0" }
+               ]
+            }"#,
+            r#"{
+               "version": { "major": 3, "minor": 0 },
+               "inputs": [
+                  { "name": "%v_0", "type": "Scalar<BLS12-381>" },
+                  { "name": "%v_1", "type": "Scalar<BLS12-381>" },
+                  { "name": "%v_2", "type": "Scalar<BLS12-381>" }
+               ],
+               "outputs": [],
+               "do_communications_commitment": false,
+               "instructions": [
+                   { "op": "transient_hash", "inputs": ["%v_0", "%v_1", "%v_2"], "output": "%v_3" },
+                   { "op": "impact", "guard": "0x01", "inputs": ["%v_3"] }
+               ]
+            }"#,
+        ];
+        for ir_raw in irs {
+            let ir = IrSource::load(ir_raw.as_bytes()).unwrap();
+
+            let (k, model) = ir.k_and_model();
+            assert_eq!(k, ir.k());
+            assert_eq!(model.k(), k);
+
+            let (pk, vk) = ir.keygen(&TestParams).await.unwrap();
+            let (write_only_pk, write_only_vk) =
+                ir.keygen_for_write_with_k(&TestParams, k).await.unwrap();
+
+            let (mut pk_data, mut write_only_pk_data) = (Vec::new(), Vec::new());
+            tagged_serialize(&pk, &mut pk_data).unwrap();
+            tagged_serialize(&write_only_pk, &mut write_only_pk_data).unwrap();
+            assert!(pk_data == write_only_pk_data, "prover keys differ");
+            assert_eq!(
+                serialize::tagged_serialized_size(&write_only_pk),
+                write_only_pk_data.len()
+            );
+
+            let (mut vk_data, mut write_only_vk_data) = (Vec::new(), Vec::new());
+            tagged_serialize(&vk, &mut vk_data).unwrap();
+            tagged_serialize(&write_only_vk, &mut write_only_vk_data).unwrap();
+            assert!(vk_data == write_only_vk_data, "verifier keys differ");
+        }
+    }
 }
