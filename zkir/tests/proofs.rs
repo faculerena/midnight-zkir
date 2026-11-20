@@ -41,6 +41,34 @@ mod proof_tests {
     type ProverKey = transient_crypto::proofs::ProverKey<IrSource>;
 
     #[actix_rt::test]
+    async fn test_prover_key_is_gzipped() {
+        let ir_raw = r#"{
+           "version": { "major": 4, "minor": 0 },
+           "inputs": [
+              { "name": "%v_0", "type": "Scalar<BLS12-381>" }
+           ],
+           "outputs": [],
+           "do_communications_commitment": false,
+           "instructions": [
+               { "op": "assert", "cond": "%v_0" }
+           ]
+        }"#;
+        let ir = IrSource::load(ir_raw.as_bytes()).unwrap();
+        let (pk, _) = ir.keygen(&TestParams).await.unwrap();
+
+        let mut bytes = Vec::new();
+        Serializable::serialize(&pk, &mut bytes).unwrap();
+        let payload = <Vec<u8> as Deserializable>::deserialize(&mut &bytes[..], 0).unwrap();
+        assert_eq!(&payload[..3], &[0x1f, 0x8b, 0x08]);
+
+        let pk2: ProverKey = Deserializable::deserialize(&mut &bytes[..], 0).unwrap();
+        pk2.init().expect("gzipped prover key must read back");
+        let mut bytes2 = Vec::new();
+        Serializable::serialize(&pk2, &mut bytes2).unwrap();
+        assert_eq!(bytes, bytes2);
+    }
+
+    #[actix_rt::test]
     async fn test_extension_attack() {
         let ir_raw = r#"{
            "version": { "major": 4, "minor": 0 },

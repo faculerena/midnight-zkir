@@ -51,6 +51,7 @@ serde_bytes = { version = "^0.11.0" }
 serde_json = { version = "^1.0.0" }
 serde_repr = "^0.1.0"
 anyhow = "^1.0.102"
+flate2 = "^1.1.2"
 hex = "^0.4.3"
 sha2 = "^0.11.0"
 sha3 = "^0.11.0"
