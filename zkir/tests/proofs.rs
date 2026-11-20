@@ -3706,4 +3706,35 @@ mod proof_tests {
             assert_eq!(format!("{model:?}"), format!("{:?}", ir.model()));
         }
     }
+
+    /// `keygen_for_write_with_k` at the `k` of `k_and_model` writes the
+    /// bytes that the keys of `Zkir::keygen` write.
+    #[actix_rt::test]
+    async fn test_write_only_keys_match_keygen() {
+        use serialize::{tagged_serialize, tagged_serialized_size};
+        use transient_crypto::proofs::Zkir as _;
+
+        for ir_raw in FAST_PATH_IRS {
+            let ir = IrSource::load(ir_raw.as_bytes()).unwrap();
+            let (k, _) = ir.k_and_model();
+
+            let (pk, vk) = ir.keygen(&TestParams).await.unwrap();
+            let (write_only_pk, write_only_vk) =
+                ir.keygen_for_write_with_k(&TestParams, k).await.unwrap();
+
+            let (mut pk_data, mut write_only_pk_data) = (Vec::new(), Vec::new());
+            tagged_serialize(&pk, &mut pk_data).unwrap();
+            tagged_serialize(&write_only_pk, &mut write_only_pk_data).unwrap();
+            assert!(pk_data == write_only_pk_data, "prover keys differ");
+            assert_eq!(
+                tagged_serialized_size(&write_only_pk),
+                write_only_pk_data.len()
+            );
+
+            let (mut vk_data, mut write_only_vk_data) = (Vec::new(), Vec::new());
+            tagged_serialize(&vk, &mut vk_data).unwrap();
+            tagged_serialize(&write_only_vk, &mut write_only_vk_data).unwrap();
+            assert!(vk_data == write_only_vk_data, "verifier keys differ");
+        }
+    }
 }

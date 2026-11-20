@@ -1334,6 +1334,63 @@ fn k_search_batch(start: u32, last_rows: Option<usize>) -> std::ops::RangeInclus
     start..=start.saturating_add(width - 1).min(K_SEARCH_MAX)
 }
 
+/// A prover key that can be serialized, and that is all it can do: what
+/// [`IrSource::keygen_for_write_with_k`] gives. It serializes, tag included,
+/// to the same bytes as the [`ProverKey`] of [`Zkir::keygen`], so what is
+/// written deserializes as a `ProverKey<IrSource>` that can prove.
+#[derive(Debug)]
+pub struct WriteOnlyProverKey(midnight_zk_stdlib::MidnightWriteOnlyPK<IrSource>);
+
+impl WriteOnlyProverKey {
+    fn write_raw<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
+        // As `Zkir::write_raw_pk` for `IrSource`.
+        self.0.write(
+            writer,
+            midnight_proofs::utils::SerdeFormat::RawBytesUnchecked,
+        )
+    }
+
+    fn raw_size(&self) -> usize {
+        struct Count(usize);
+        impl io::Write for Count {
+            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                self.0 += buf.len();
+                Ok(buf.len())
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut count = Count(0);
+        self.write_raw(&mut count)
+            .expect("counting bytes cannot fail");
+        count.0
+    }
+}
+
+impl Tagged for WriteOnlyProverKey {
+    fn tag() -> std::borrow::Cow<'static, str> {
+        ProverKey::<IrSource>::tag()
+    }
+    fn tag_unique_factor() -> String {
+        ProverKey::<IrSource>::tag_unique_factor()
+    }
+}
+
+// The framing of `ProverKey`'s serialization: the length of the raw key as a
+// `u64`, then the raw key.
+impl Serializable for WriteOnlyProverKey {
+    fn serialize(&self, writer: &mut impl io::Write) -> io::Result<()> {
+        Serializable::serialize(&(self.raw_size() as u64), writer)?;
+        self.write_raw(writer)
+    }
+
+    fn serialized_size(&self) -> usize {
+        let size = self.raw_size();
+        (size as u64).serialized_size() + size
+    }
+}
+
 impl IrSource {
     /// Retrieves a model representation of this circuit.
     pub fn model(&self) -> Model {
@@ -1394,6 +1451,29 @@ impl IrSource {
             None => midnight_zk_stdlib::cost_model(self, Some(best_k)),
         };
         (best_k as u8, Model { model })
+    }
+
+    /// Generates the keys of this circuit for writing them out, for the `k`
+    /// that [`IrSource::k_and_model`] (or [`Zkir::k`]) found: the verifier
+    /// key that [`Zkir::keygen`] gives, and a [`WriteOnlyProverKey`] that
+    /// serializes to the same bytes as the prover key of [`Zkir::keygen`].
+    ///
+    /// This is much cheaper than `keygen`: one synthesis instead of two, no
+    /// search for `k`, and none of the prover's derived data, which the
+    /// serialized key does not hold. To prove, use `keygen`, or read the
+    /// written key back.
+    pub async fn keygen_for_write_with_k(
+        &self,
+        params: &impl ParamsProverProvider,
+        k: u8,
+    ) -> Result<(WriteOnlyProverKey, transient_crypto::proofs::VerifierKey), anyhow::Error> {
+        let params = params.get_params(k).await?;
+        let (vk, pk) = midnight_zk_stdlib::setup_keys_for_write(params.as_ref(), self)
+            .map_err(|e| anyhow::anyhow!("key generation failed for k={k}: {e}"))?;
+        Ok((
+            WriteOnlyProverKey(pk),
+            transient_crypto::proofs::VerifierKey::from(vk),
+        ))
     }
 
     /// Attempts to parse an arbitrary input as IR.

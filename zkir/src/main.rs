@@ -29,7 +29,6 @@ use tracing::level_filters::LevelFilter;
 use tracing_subscriber::Registry;
 use tracing_subscriber::filter::Targets;
 use tracing_subscriber::prelude::*;
-use transient_crypto::proofs::Zkir;
 
 #[derive(Parser)]
 #[clap(version, about, long_about = None)]
@@ -218,7 +217,7 @@ async fn main() -> anyhow::Result<()> {
                 let mut vk_file =
                     BufWriter::new(File::create(key_dir.join(file).with_extension("verifier"))?);
                 pb.enable_steady_tick(Duration::from_millis(100));
-                let (pk, vk) = ir.keygen(&pp).await?;
+                let (pk, vk) = ir.keygen_for_write_with_k(&pp, *k).await?;
                 tagged_serialize(&pk, &mut pk_file)?;
                 tagged_serialize(&vk, &mut vk_file)?;
                 pb.finish();
@@ -258,7 +257,7 @@ async fn main() -> anyhow::Result<()> {
             )?;
             pb.set_message(format!("Compiling circuit {ir_file:?} (k={k})"));
             pb.enable_steady_tick(Duration::from_millis(100));
-            let (pk, vk) = ir.keygen(&pp).await?;
+            let (pk, vk) = ir.keygen_for_write_with_k(&pp, k).await?;
             tagged_serialize(&pk, &mut pk_file)?;
             tagged_serialize(&vk, &mut vk_file)?;
             pb.finish();
