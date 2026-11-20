@@ -1815,8 +1815,7 @@ dependencies = [
 [[package]]
 name = "midnight-circuits"
 version = "7.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79ba23314560e105bb1da33551199ae9abaa25188589d8308caddbcd8d1f3448"
+source = "git+https://github.com/faculerena/midnight-zk?rev=5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920#5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920"
 dependencies = [
  "base64 0.13.1",
  "ff 0.13.1",
@@ -1870,10 +1869,10 @@ dependencies = [
 [[package]]
 name = "midnight-proofs"
 version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19b2e4b1acb581ad741b0cb7c0e9dbdf51142f4e9518886f25fcff40a6702dcc"
+source = "git+https://github.com/faculerena/midnight-zk?rev=5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920#5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920"
 dependencies = [
  "blake2b_simd",
+ "blst",
  "ff 0.13.1",
  "getrandom 0.2.17",
  "group 0.13.0",
@@ -1883,6 +1882,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
  "rayon",
+ "rustc-hash",
  "serde",
  "serde_derive",
  "tracing",
@@ -1996,8 +1996,7 @@ dependencies = [
 [[package]]
 name = "midnight-zk-stdlib"
 version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73819f4cd779e365545109dbbd759fe0055df4ea73f6e0ddb873281c1c8014ec"
+source = "git+https://github.com/faculerena/midnight-zk?rev=5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920#5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920"
 dependencies = [
  "base64 0.13.1",
  "bincode",

@@ -24,3 +24,11 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 panic = "abort"
+
+# Faster key generation (keygen_for_write_with_k, setup_keys_for_write and the
+# changes they rely on), not released yet: branch fast-keygen-0.8 of
+# faculerena/midnight-zk, on top of the releases of these versions.
+[patch.crates-io]
+midnight-proofs = { git = "https://github.com/faculerena/midnight-zk", rev = "5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920" }
+midnight-circuits = { git = "https://github.com/faculerena/midnight-zk", rev = "5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920" }
+midnight-zk-stdlib = { git = "https://github.com/faculerena/midnight-zk", rev = "5eaefa3b218e0d1a6fb18f1eca8a94cf2dbd0920" }
