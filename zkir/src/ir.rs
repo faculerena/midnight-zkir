@@ -1294,12 +1294,106 @@ impl Model {
     }
 }
 
+/// The candidate values of `k` that the search for the optimal `k` covers:
+/// those of `midnight_zk_stdlib::optimal_k`.
+const K_SEARCH_MIN: u32 = 9;
+const K_SEARCH_MAX: u32 = 25;
+
+/// How many candidate values of `k` [`IrSource::k_and_model`] tries at once
+/// to begin with, when nothing is known about the circuit yet.
+const K_SEARCH_FIRST_BATCH: u32 = 4;
+
+/// The most candidate values of `k` that [`IrSource::k_and_model`] tries at
+/// once. It bounds the memory of the search: one cost-model synthesis of the
+/// circuit per candidate in flight, each a small fraction of what generating
+/// the keys of the same circuit takes.
+const K_SEARCH_MAX_BATCH: u32 = 8;
+
+/// The candidates that [`IrSource::k_and_model`] tries next, at once: a
+/// non-empty run of consecutive candidates that begins at `start`, where
+/// `start` is in `K_SEARCH_MIN..=K_SEARCH_MAX`.
+///
+/// `last_rows` is the row count of the model of the candidate before `start`,
+/// if there is one. The row count changes little from one candidate to the
+/// next, so the search most likely ends at the first candidate k with
+/// `last_rows < 2^k`: the run goes up to that one, so that the search neither
+/// waits for a further round nor computes models it will discard. This only
+/// decides which models are computed together, never the result of the
+/// search, and it is a function of the circuit alone.
+fn k_search_batch(start: u32, last_rows: Option<usize>) -> std::ops::RangeInclusive<u32> {
+    let width = match last_rows {
+        None => K_SEARCH_FIRST_BATCH,
+        Some(rows) => {
+            let expected_end = (start..=K_SEARCH_MAX)
+                .find(|k| rows < (1usize << k))
+                .unwrap_or(K_SEARCH_MAX);
+            expected_end - start + 1
+        }
+    };
+    let width = width.clamp(1, K_SEARCH_MAX_BATCH);
+    start..=start.saturating_add(width - 1).min(K_SEARCH_MAX)
+}
+
 impl IrSource {
     /// Retrieves a model representation of this circuit.
     pub fn model(&self) -> Model {
         Model {
             model: midnight_zk_stdlib::cost_model(self, None),
         }
+    }
+
+    /// Finds the optimal `k` for this circuit and the model for it: the same
+    /// `k` as [`Zkir::k`] and the same model as [`IrSource::model`], with one
+    /// search instead of the two those take.
+    ///
+    /// `midnight_zk_stdlib::optimal_k` tries k = 9, 10, ... 25 in turn, keeps
+    /// the smallest `model.k` it has seen, and stops after the first k whose
+    /// model has fewer than 2^k rows. This does the same over the same
+    /// candidates in the same order with the same stopping rule; the only
+    /// difference is that the models of a few consecutive candidates (see
+    /// [`k_search_batch`]) are computed at once, on a thread each. A model is
+    /// a pure function of the circuit and the candidate k, so computing it
+    /// early changes nothing, and the models of candidates past the stopping
+    /// point are discarded unread. How the candidates are batched depends on
+    /// the circuit only, not on the machine or the environment.
+    pub fn k_and_model(&self) -> (u8, Model) {
+        let mut best_k = u32::MAX;
+        let mut seen = Vec::new();
+        let mut last_rows = None;
+        let mut start = K_SEARCH_MIN;
+        'search: while start <= K_SEARCH_MAX {
+            // Whatever `k_search_batch` says, the batch begins at `start`
+            // and is not empty, and the next one begins past its end: every
+            // candidate is tried in turn and the search always ends.
+            let end = (*k_search_batch(start, last_rows).end()).clamp(start, K_SEARCH_MAX);
+            let batch = start..=end;
+            start = end + 1;
+            let models: Vec<_> = std::thread::scope(|scope| {
+                let handles: Vec<_> = batch
+                    .clone()
+                    .map(|k| scope.spawn(move || midnight_zk_stdlib::cost_model(self, Some(k))))
+                    .collect();
+                handles
+                    .into_iter()
+                    .map(|h| h.join().expect("cost model thread should not panic"))
+                    .collect()
+            });
+            for (k, model) in batch.zip(models) {
+                let done = model.rows < (1 << k);
+                best_k = best_k.min(model.k);
+                last_rows = Some(model.rows);
+                seen.push((k, model));
+                if done {
+                    break 'search;
+                }
+            }
+        }
+        // `cost_model(self, None)` is the model at `optimal_k`, `best_k`.
+        let model = match seen.into_iter().find(|(k, _)| *k == best_k) {
+            Some((_, model)) => model,
+            None => midnight_zk_stdlib::cost_model(self, Some(best_k)),
+        };
+        (best_k as u8, Model { model })
     }
 
     /// Attempts to parse an arbitrary input as IR.
@@ -1367,3 +1461,29 @@ randomised_serialization_test!(IrSource);
 
 #[cfg(feature = "proptest")]
 randomised_serialization_test!(Instruction);
+
+#[cfg(test)]
+mod k_search_tests {
+    use super::*;
+
+    /// Every batch is a non-empty run of candidates that begins at `start`,
+    /// stays within the candidates and is at most `K_SEARCH_MAX_BATCH` long.
+    #[test]
+    fn k_search_batch_is_a_run_from_start() {
+        for start in K_SEARCH_MIN..=K_SEARCH_MAX {
+            for last_rows in [
+                None,
+                Some(0),
+                Some(1 << 12),
+                Some((1 << 20) + 1),
+                Some(usize::MAX),
+            ] {
+                let batch = k_search_batch(start, last_rows);
+                assert_eq!(*batch.start(), start);
+                assert!(batch.end() >= batch.start());
+                assert!(*batch.end() <= K_SEARCH_MAX);
+                assert!(batch.end() - batch.start() < K_SEARCH_MAX_BATCH);
+            }
+        }
+    }
+}

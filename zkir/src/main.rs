@@ -194,9 +194,7 @@ async fn main() -> anyhow::Result<()> {
                 let pb = multi.add(pb);
                 pb.set_message(format!("  circuit {file:?}"));
                 let ir = without_extension(path)?;
-                let k = ir.k();
-                pb.set_message(format!("  circuit {file:?} (k={k})"));
-                let model = ir.model();
+                let (k, model) = ir.k_and_model();
                 pb.set_message(format!("  circuit {file:?} (k={k}, rows={})", model.rows()));
                 info!(?model, "full model for {file:?}");
                 data.push((pb, ir, k));
@@ -241,8 +239,7 @@ async fn main() -> anyhow::Result<()> {
             let ir = maybe_bzkir(ir_file)?;
             let mut pk_file = BufWriter::new(File::create(prover_key)?);
             let mut vk_file = BufWriter::new(File::create(verifier_key)?);
-            let k = ir.k();
-            let model = ir.model();
+            let (k, model) = ir.k_and_model();
             write!(term, " (k={k}, rows={})", model.rows())?;
             info!(?model, "full model");
             term.flush()?;

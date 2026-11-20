@@ -40,6 +40,50 @@ mod proof_tests {
 
     type ProverKey = transient_crypto::proofs::ProverKey<IrSource>;
 
+    /// Circuits for the tests of `k_and_model` and the key generation for
+    /// writing: an assertion, a hash to curve, and a transient hash with a
+    /// public impact.
+    const FAST_PATH_IRS: [&str; 3] = [
+        r#"{
+           "version": { "major": 3, "minor": 0 },
+           "inputs": [
+              { "name": "%v_0", "type": "Scalar<BLS12-381>" }
+           ],
+           "outputs": [],
+           "do_communications_commitment": false,
+           "instructions": [
+               { "op": "assert", "cond": "%v_0" }
+           ]
+        }"#,
+        r#"{
+           "version": { "major": 3, "minor": 0 },
+           "inputs": [
+              { "name": "%v_0", "type": "Scalar<BLS12-381>" },
+              { "name": "%v_1", "type": "Scalar<BLS12-381>" },
+              { "name": "%v_2", "type": "Scalar<BLS12-381>" }
+           ],
+           "outputs": [],
+           "do_communications_commitment": false,
+           "instructions": [
+               { "op": "hash_to_curve", "inputs": ["%v_0", "%v_1", "%v_2"], "output": "%p_0" }
+           ]
+        }"#,
+        r#"{
+           "version": { "major": 3, "minor": 0 },
+           "inputs": [
+              { "name": "%v_0", "type": "Scalar<BLS12-381>" },
+              { "name": "%v_1", "type": "Scalar<BLS12-381>" },
+              { "name": "%v_2", "type": "Scalar<BLS12-381>" }
+           ],
+           "outputs": [],
+           "do_communications_commitment": false,
+           "instructions": [
+               { "op": "transient_hash", "inputs": ["%v_0", "%v_1", "%v_2"], "output": "%v_3" },
+               { "op": "impact", "guard": "0x01", "inputs": ["%v_3"] }
+           ]
+        }"#,
+    ];
+
     #[actix_rt::test]
     async fn test_extension_attack() {
         let ir_raw = r#"{
@@ -3647,5 +3691,19 @@ mod proof_tests {
             preimage.check(&ir).is_err(),
             "a Native constant with 2 field elements should be rejected"
         );
+    }
+
+    /// `k_and_model` finds the `k` of `Zkir::k` and the model of
+    /// `IrSource::model`.
+    #[test]
+    fn test_k_and_model() {
+        use transient_crypto::proofs::Zkir as _;
+
+        for ir_raw in FAST_PATH_IRS {
+            let ir = IrSource::load(ir_raw.as_bytes()).unwrap();
+            let (k, model) = ir.k_and_model();
+            assert_eq!(k, ir.k());
+            assert_eq!(format!("{model:?}"), format!("{:?}", ir.model()));
+        }
     }
 }
