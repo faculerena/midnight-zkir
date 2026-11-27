@@ -30,6 +30,11 @@ use tracing_subscriber::Registry;
 use tracing_subscriber::filter::Targets;
 use tracing_subscriber::prelude::*;
 
+// musl's malloc serialises the key generation threads.
+#[cfg(target_env = "musl")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(Parser)]
 #[clap(version, about, long_about = None)]
 struct Cli {
